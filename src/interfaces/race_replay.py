@@ -339,6 +339,15 @@ class F1RaceReplayWindow(arcade.Window):
 
             # Project (x,y) to reference and combine with lap count
             projected_m = self._project_to_reference(pos.get("x", 0.0), pos.get("y", 0.0))
+
+            # Fix for start-line wrap-around:
+            # If on Lap 1, and telemetry distance suggests we are near start (e.g. < 50% lap),
+            # but projection suggests we are near end (> 50% lap), it means we are behind the line.
+            # We subtract lap length to make progress negative (e.g. -10m instead of 4990m).
+            telemetry_dist = float(pos.get("dist", 0.0))
+            if lap == 1 and telemetry_dist < self._ref_total_length * 0.5 and projected_m > self._ref_total_length * 0.5:
+                projected_m -= self._ref_total_length
+
             # progress in metres since race start: (lap-1) * lap_length + projected_m
             progress_m = float((max(lap, 1) - 1) * self._ref_total_length + projected_m)
 
@@ -415,7 +424,7 @@ class F1RaceReplayWindow(arcade.Window):
 
         # Controls Legend - Bottom Left (keeps small offset from left UI edge)
         legend_x = max(12, self.left_ui_margin - 320) if hasattr(self, "left_ui_margin") else 20
-        legend_y = 180 # Height of legend block
+        legend_y = 200 # Height of legend block
         legend_icons = self.legend_comp._control_icons_textures # icons
         legend_lines = [
             ("Controls:"),
@@ -425,6 +434,8 @@ class F1RaceReplayWindow(arcade.Window):
             ("[R]       Restart"),
             ("[D]       Toggle DRS Zones"),
             ("[B]       Toggle Progress Bar"),
+            ("[Shift + Click] Select Multiple Drivers")
+
         ]
         
         for i, lines in enumerate(legend_lines):
