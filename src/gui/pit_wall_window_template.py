@@ -5,7 +5,7 @@ Copy this file and replace the placeholder comments with your own implementation
 """
 
 import sys
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout
+from PySide6.QtWidgets import QApplication
 from src.gui.pit_wall_window import PitWallWindow
 
 
