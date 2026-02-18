@@ -56,6 +56,7 @@ class InsightsMenu(QMainWindow):
             "Live Telemetry",
             [
                 ("Telemetry Stream Viewer", "View raw telemetry data", self.launch_telemetry_viewer),
+                ("Driver Live Telemetry", "Speed, gear, throttle & braking for a selected driver", self.launch_driver_telemetry),
             ]
         ))
         
@@ -163,6 +164,13 @@ class InsightsMenu(QMainWindow):
         example_window.show()
         # Keep reference to prevent garbage collection
         self.opened_windows.append(example_window)
+
+    def launch_driver_telemetry(self):
+        print("🚀 Launching: Driver Live Telemetry")
+        from src.insights.driver_telemetry_window import DriverTelemetryWindow
+        window = DriverTelemetryWindow()
+        window.show()
+        self.opened_windows.append(window)
 
     def launch_telemetry_viewer(self):
         print("🚀 Launching: Telemetry Stream Viewer")

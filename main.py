@@ -79,7 +79,8 @@ def main(year=None, round_number=None, playback_speed=1, session_type='R', visib
         'year': year,
         'round': round_number,
         'date': session.event.get('EventDate', '').strftime('%B %d, %Y') if session.event.get('EventDate') else '',
-        'total_laps': race_telemetry['total_laps']
+        'total_laps': race_telemetry['total_laps'],
+        'circuit_length_m': float(example_lap["Distance"].max()) if example_lap is not None and "Distance" in example_lap else None,
     }
 
     # Launch insights menu (always shown with replay)
