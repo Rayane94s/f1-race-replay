@@ -9,7 +9,7 @@ from src.gui.telemetry_stream_viewer import main as telemetry_viewer_main
 
 def run_arcade_replay(frames, track_statuses, example_lap, drivers, title,
                       playback_speed=1.0, driver_colors=None, circuit_rotation=0.0, total_laps=None,
-                      visible_hud=True, ready_file=None, session_info=None, session=None, enable_telemetry=False):
+                      visible_hud=True, ready_file=None, session_info=None, session=None, enable_telemetry=True):
     window = F1RaceReplayWindow(
         frames=frames,
         track_statuses=track_statuses,
@@ -47,3 +47,16 @@ def launch_telemetry_viewer():
   
   viewer_thread = threading.Thread(target=start_viewer, daemon=True)
   viewer_thread.start()
+
+
+def launch_insights_menu():
+  def start_menu():
+    try:
+      # Give the main application a moment to start
+      time.sleep(1)
+      subprocess.run([sys.executable, "-m", "src.gui.insights_menu"], check=False)
+    except Exception as e:
+      print(f"Failed to launch insights menu: {e}")
+  
+  menu_thread = threading.Thread(target=start_menu, daemon=True)
+  menu_thread.start()
