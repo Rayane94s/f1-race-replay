@@ -2,28 +2,72 @@ from src.f1_data import get_race_telemetry, enable_cache, get_circuit_rotation, 
 from src.run_session import run_arcade_replay, launch_insights_menu
 from src.interfaces.qualifying import run_qualifying_replay
 import sys
+from datetime import datetime
+from time import perf_counter
 from src.cli.race_selection import cli_load
 from src.gui.race_selection import RaceSelectionWindow
 from PySide6.QtWidgets import QApplication
 
+
+def _timestamp():
+  return datetime.now().strftime("%H:%M:%S")
+
+
+def _log(message):
+  print(f"[{_timestamp()}] {message}")
+
+
+def _log_step(message, started_at):
+  elapsed = perf_counter() - started_at
+  _log(f"{message} ({elapsed:.2f}s)")
+
+
+def _lap_has_drs_activation(lap_telemetry):
+  if lap_telemetry is None or "DRS" not in lap_telemetry:
+    return False
+
+  try:
+    drs_values = lap_telemetry["DRS"].to_numpy()
+  except Exception:
+    return False
+
+  for value in drs_values:
+    try:
+      if float(value) >= 10:
+        return True
+    except (TypeError, ValueError):
+      continue
+  return False
+
+
 def main(year=None, round_number=None, playback_speed=1, session_type='R', visible_hud=True, ready_file=None, show_telemetry_viewer=True):
-  print(f"Loading F1 {year} Round {round_number} Session '{session_type}'")
-  session = load_session(year, round_number, session_type)
+  overall_started_at = perf_counter()
+  _log(f"Loading F1 {year} Round {round_number} Session '{session_type}'")
 
-  print(f"Loaded session: {session.event['EventName']} - {session.event['RoundNumber']} - {session_type}")
-
-  # Enable cache for fastf1
+  # Enable cache for FastF1 before any session load
+  cache_started_at = perf_counter()
   enable_cache()
+  _log_step("FastF1 cache initialized", cache_started_at)
+
+  session_started_at = perf_counter()
+  session = load_session(year, round_number, session_type)
+  _log_step(
+    f"Loaded session: {session.event['EventName']} - {session.event['RoundNumber']} - {session_type}",
+    session_started_at,
+  )
 
   if session_type == 'Q' or session_type == 'SQ':
 
     # Get the drivers who participated and their lap times
 
+    quali_data_started_at = perf_counter()
     qualifying_session_data = get_quali_telemetry(session, session_type=session_type)
+    _log_step("Prepared qualifying telemetry dataset", quali_data_started_at)
 
     # Run the arcade screen showing qualifying results
 
     title = f"{session.event['EventName']} - {'Sprint Qualifying' if session_type == 'SQ' else 'Qualifying Results'}"
+    _log_step("Session ready for replay window", overall_started_at)
     
     run_qualifying_replay(
       session=session,
@@ -36,34 +80,41 @@ def main(year=None, round_number=None, playback_speed=1, session_type='R', visib
 
     # Get the drivers who participated in the race
 
+    race_data_started_at = perf_counter()
     race_telemetry = get_race_telemetry(session, session_type=session_type)
+    _log_step("Prepared race telemetry dataset", race_data_started_at)
 
     # Get example lap for track layout
-    # Qualifying lap preferred for DRS zones (fallback to fastest race lap (no DRS data))
+    # Prefer race lap first for faster loading. Fall back to qualifying if DRS data is missing.
+    track_layout_started_at = perf_counter()
     example_lap = None
-    
-    try:
-        print("Attempting to load qualifying session for track layout...")
-        quali_session = load_session(year, round_number, 'Q')
-        if quali_session is not None and len(quali_session.laps) > 0:
-            fastest_quali = quali_session.laps.pick_fastest()
-            if fastest_quali is not None:
-                quali_telemetry = fastest_quali.get_telemetry()
-                if 'DRS' in quali_telemetry.columns:
-                    example_lap = quali_telemetry
-                    print(f"Using qualifying lap from driver {fastest_quali['Driver']} for DRS Zones")
-    except Exception as e:
-        print(f"Could not load qualifying session: {e}")
+    fastest_lap = session.laps.pick_fastest()
+    if fastest_lap is None:
+      _log("Error: No valid laps found in session")
+      return
 
-    # fallback: Use fastest race lap
-    if example_lap is None:
-        fastest_lap = session.laps.pick_fastest()
-        if fastest_lap is not None:
-            example_lap = fastest_lap.get_telemetry()
-            print("Using fastest race lap (DRS detection may use speed-based fallback)")
-        else:
-            print("Error: No valid laps found in session")
-            return
+    example_lap = fastest_lap.get_telemetry()
+
+    if _lap_has_drs_activation(example_lap):
+      _log(f"Using fastest race lap from driver {fastest_lap['Driver']} for track layout")
+    else:
+      _log("Race lap lacks clear DRS activation. Attempting qualifying session for DRS zones...")
+      try:
+        quali_started_at = perf_counter()
+        quali_session = load_session(year, round_number, 'Q')
+        _log_step("Loaded qualifying session for DRS zone extraction", quali_started_at)
+
+        if quali_session is not None and len(quali_session.laps) > 0:
+          fastest_quali = quali_session.laps.pick_fastest()
+          if fastest_quali is not None:
+            quali_telemetry = fastest_quali.get_telemetry()
+            if _lap_has_drs_activation(quali_telemetry):
+              example_lap = quali_telemetry
+              _log(f"Using qualifying lap from driver {fastest_quali['Driver']} for DRS zones")
+      except Exception as e:
+        _log(f"Could not load qualifying session: {e}")
+
+    _log_step("Track layout telemetry prepared", track_layout_started_at)
 
     drivers = session.drivers
 
@@ -85,7 +136,8 @@ def main(year=None, round_number=None, playback_speed=1, session_type='R', visib
 
     # Launch insights menu (always shown with replay)
     launch_insights_menu()
-    print("Launching insights menu...")
+    _log("Launching insights menu...")
+    _log_step("Session ready for replay window", overall_started_at)
 
     # Run the arcade replay
 
