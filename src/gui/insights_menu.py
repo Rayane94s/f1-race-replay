@@ -159,7 +159,7 @@ class InsightsMenu(QMainWindow):
     def launch_example_window(self):
         print("🚀 Launching: Example Insight Window")
         # Open the Example PitWallWindow
-        from src.gui.example_pit_wall_window import ExamplePitWallWindow
+        from src.insights.example_pit_wall_window import ExamplePitWallWindow
         example_window = ExamplePitWallWindow()
         example_window.show()
         # Keep reference to prevent garbage collection

@@ -1,15 +1,3 @@
-"""
-Driver Live Telemetry Insight
-
-Displays real-time telemetry (speed, gear, throttle, braking) as scrolling
-line charts for a user-selected driver, styled after the qualifying viewer.
-
-X-axis modes
-────────────
-• Last 30 seconds  – rolling 30-second time window (x = seconds ago)
-• Current Lap      – distance completed on the current lap (x = metres)
-"""
-
 import sys
 from collections import deque
 
@@ -172,7 +160,7 @@ class DriverTelemetryWindow(PitWallWindow):
         speed    = float(driver.get("speed")    or 0)
         gear     = int(driver.get("gear")       or 0)
         throttle = float(driver.get("throttle") or 0)
-        brake    = float(driver.get("brake")    or 0) * 100
+        brake    = float(driver.get("brake")    or 0) * 100 # Convert to percentage as brake is 0-1 in the stream but we want 0-100 on the chart
         dist     = float(driver.get("dist")     or 0)
         lap      = driver.get("lap")
 
